@@ -1,2 +1,2 @@
-# MIF_bayesFAVAR
-R/C++ implementation of Bayes VAR models
+# MIF_bayesFAVAR_tyrimas
+Bajeso FAVAR-TVP modelio taikymas JAV ekoniminiams ir rinkos duomenims.
