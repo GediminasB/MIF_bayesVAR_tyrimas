@@ -1,0 +1,92 @@
+\begin{thebibliography}{10}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bernanke et~al.(2004)Bernanke, Boivin, and Eliasz]{Bernanke2004}
+Ben~S. Bernanke, Jean Boivin, and Piotr Eliasz.
+\newblock {Measuring the Effects of Monetary Policy: A Factor-Augmented Vector
+  Autoregressive (FAVAR) Approach}.
+\newblock NBER Working Papers 10220, National Bureau of Economic Research, Inc,
+  January 2004.
+\newblock URL \url{https://ideas.repec.org/p/nbr/nberwo/10220.html}.
+
+\bibitem[Blake et~al.(2012)Blake, Mumtaz, et~al.]{blake2012applied}
+Andrew~P Blake, Haroon Mumtaz, et~al.
+\newblock Applied bayesian econometrics for central bankers.
+\newblock \emph{Technical Books}, 2012.
+
+\bibitem[Carter and Kohn(1994)]{CC1994}
+C.~K. Carter and R.~Kohn.
+\newblock On gibbs sampling for state space models.
+\newblock \emph{Biometrika}, 81\penalty0 (3):\penalty0 541--553, 1994.
+\newblock ISSN 00063444.
+\newblock URL \url{http://www.jstor.org/stable/2337125}.
+
+\bibitem[Cogley and Sargent(2005)]{CogleySargent2005}
+Timothy Cogley and Thomas~J. Sargent.
+\newblock Drifts and volatilities: monetary policies and outcomes in the post
+  \{WWII\} \{US\}.
+\newblock \emph{Review of Economic Dynamics}, 8\penalty0 (2):\penalty0 262 --
+  302, 2005.
+\newblock ISSN 1094-2025.
+\newblock \doi{http://dx.doi.org/10.1016/j.red.2004.10.009}.
+\newblock URL
+  \url{http://www.sciencedirect.com/science/article/pii/S1094202505000049}.
+\newblock Monetary Policy and Learning.
+
+\bibitem[Durbin and Koopman(2002)]{DK2002}
+J.~Durbin and S.~J. Koopman.
+\newblock A simple and efficient simulation smoother for state space time
+  series analysis.
+\newblock \emph{Biometrika}, 89\penalty0 (3):\penalty0 603--615, 2002.
+\newblock ISSN 00063444.
+\newblock URL \url{http://www.jstor.org/stable/4140605}.
+
+\bibitem[Ellis et~al.(2014)Ellis, Mumtaz, and Zabczyk]{EllisMumtaz2014}
+Colin Ellis, Haroon Mumtaz, and Pawel Zabczyk.
+\newblock What lies beneath? a time-varying favar model for the uk transmission
+  mechanism.
+\newblock \emph{The Economic Journal}, 124\penalty0 (576):\penalty0 668--699,
+  2014.
+\newblock ISSN 1468-0297.
+\newblock \doi{10.1111/ecoj.12147}.
+\newblock URL \url{http://dx.doi.org/10.1111/ecoj.12147}.
+
+\bibitem[Koop and Korobilis(2010)]{KoopKorobilis2010}
+Gary Koop and Dimitris Korobilis.
+\newblock Bayesian multivariate time series methods for empirical
+  macroeconomics.
+\newblock \emph{Foundations and Trends® in Econometrics}, 3\penalty0
+  (4):\penalty0 267--358, 2010.
+\newblock ISSN 1551-3076.
+\newblock \doi{10.1561/0800000013}.
+\newblock URL \url{http://dx.doi.org/10.1561/0800000013}.
+
+\bibitem[Nelson and Siegel(1987)]{NelsonSiegel}
+Charles~R. Nelson and Andrew~F. Siegel.
+\newblock Parsimonious modeling of yield curves.
+\newblock \emph{The Journal of Business}, 60\penalty0 (4):\penalty0 473--489,
+  1987.
+\newblock ISSN 00219398, 15375374.
+\newblock URL \url{http://www.jstor.org/stable/2352957}.
+
+\bibitem[Primiceri(2005)]{Primiceri2005}
+Giorgio~E. Primiceri.
+\newblock Time varying structural vector autoregressions and monetary policy.
+\newblock \emph{The Review of Economic Studies}, 72\penalty0 (3):\penalty0
+  821--852, 2005.
+\newblock \doi{10.1111/j.1467-937X.2005.00353.x}.
+\newblock URL \url{http://restud.oxfordjournals.org/content/72/3/821.abstract}.
+
+\bibitem[Robertson et~al.(2005)Robertson, Tallman, and Whiteman]{Robertson2005}
+John~C. Robertson, Ellis~W. Tallman, and Charles~H. Whiteman.
+\newblock Forecasting using relative entropy.
+\newblock \emph{Journal of Money, Credit and Banking}, 37\penalty0
+  (3):\penalty0 383--401, 2005.
+\newblock ISSN 00222879, 15384616.
+\newblock URL \url{http://www.jstor.org/stable/3839160}.
+
+\end{thebibliography}

@@ -1,0 +1,12 @@
+\BOOKMARK [1][-]{section.1}{Užduotis}{}% 1
+\BOOKMARK [1][-]{section.2}{Duomenys}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Pajamingumo kreivė}{section.2}% 3
+\BOOKMARK [1][-]{section.3}{Trumpai apie TVP-FAVAR modelį}{}% 4
+\BOOKMARK [2][-]{subsection.3.1}{Apriori\040skirstiniai}{section.3}% 5
+\BOOKMARK [2][-]{subsection.3.2}{VAR lagų skaičiaus pasirinkimas}{section.3}% 6
+\BOOKMARK [1][-]{section.4}{MCMC\040algoritmo\040rezultatai}{}% 7
+\BOOKMARK [2][-]{subsection.4.1}{Konvergavimas}{section.4}% 8
+\BOOKMARK [2][-]{subsection.4.2}{Parametrų skirstiniai ir įverčiai}{section.4}% 9
+\BOOKMARK [2][-]{subsection.4.3}{Prognozės ir scenarijų analizė}{section.4}% 10
+\BOOKMARK [1][-]{section.5}{Priedas. Paveikslėliai}{}% 11
+\BOOKMARK [1][-]{section.6}{Nuorodos į R/C++ kodą}{}% 12

@@ -1,0 +1,307 @@
+---
+title: "Bajeso FAVAR-TVP modelio taikymas JAV ekoniminiams ir rinkos duomenims"
+author: "Gediminas Bagdonas <<gediminas.bagdonas@mif.vu.lt>>"
+date: '`r format(Sys.Date(), "%Y-%m-%d")`'
+output:
+  md_document:
+    variant: markdown_github
+  html_notebook:
+    fig_caption: yes
+    fig_retina: null
+  html_document:
+    fig_caption: yes
+  pdf_document:
+    citation_package: natbib
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+    keep_tex: yes
+    latex_engine: xelatex
+    number_sections: yes
+  word_document: default
+fontsize: 12pt
+lang: lt
+link-citations: yes
+documetclass: article
+bibliography: references.bib
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.post='H', echo=FALSE)
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+# Naudojamos bibliotekos
+library(readxl)
+library(xts)
+library(bayesVAR)
+library(Hmisc)
+library(vars)
+```
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+# Duomenų nuskaitymas ir paruošimas
+data = read_excel("FRED_data.xlsx", sheet = 1)
+data.xts = as.xts(data[,-1], order.by = as.yearqtr(data[[1]]))
+# regs = c("UNRATE", "GDPDEF", "LSC_L", "LSC_S", "LSC_C")
+# FRED.data = data.xts[, regs]
+# FRED.FAVAR = data.xts[,c("DGS1", "DGS3", "DGS5", "DGS7", "DGS10", "UNRATE","GDPDEF")]
+regs = c("SVENPY3M", "SVENPY6M", "SVENPY01", "SVENPY02", "SVENPY03", "SVENPY04", "SVENPY05", "SVENPY06", "SVENPY07", "SVENPY08", "SVENPY09", "SVENPY10", "UNRATE", "CPILFESL", "GDPC1")
+# regs = c("DGS3MO", "DGS6MO", "DGS1", "DGS3", "DGS5", "DGS7", "DGS10", "UNRATE", "CPILFESL")
+
+FRED.data = data.xts[, regs]
+```
+
+# Užduotis
+Rasti modelį, kuris susietų JAV ekonominius duomenis ir JAV vyriausybės vertybinių popierių (VVP) pajamingumų kreivę. Ištirti ekonominių duomenų įtaką pajamingumų kreivės formai ir rasti sąlygines prognozes skirtingiems ekonominiams scenarijams.
+
+# Duomenys
+Naudojame ketvirtinius duomenis nuo 1967K2 iki 2016K4. Tyrimui naudojame šias laiko eilutes:
+
+* `UNRATE` - JAV nedarbo lygis. Asmenys vyresni nei 16 metų, neturintys darbo, galintys bei pasirengę dirbti ir aktyviai ieškantys darbo. Procentiniais punktais nuo visos darbo jėgos. Pakoreguotas atsižvelgiant į sezoniškumą.
+* `CPILFESL` - JAV infliacijos lygis procentiniais punktais. Visos vartojimo prekės išskyrus maisto ir energetikos sektorius. Pakoreguotas atsižvelgiant į sezoniškumą.
+* `GDPC1` - realus (atėmus infliaciją) BVP. Metinis pokytis procentiniais punktais. Pakoreguotas atsižvelgiant į sezoniškumą.
+* `SVENPY[x]` - [x] metų trukmės JAV vyriausybės obligacijų pajamingumo norma procentiniais punktais.
+
+Ekonominius duomenis galima rasti St. Louis Fed puslapyje (https://fred.stlouisfed.org). Pajamingumo kreivių šaltinis: Federal Reserve (http://www.federalreserve.gov/pubs/feds/2006).
+
+Naudotos laiko eilutės pateiktos \ref{fig:data} Pav. Dešinėje pavaizduoti ekonominiai duomenys, o kairėje keli pajamingumų kreivės taškai.
+
+```{r data, echo=FALSE, fig.height=6, fig.width=12, fig.cap="\\label{fig:data}Nagrinėjamų ekonominių ir rinkos rodiklių istoriniai duomenys"}
+plot.zoo(FRED.data[,c("SVENPY01", "SVENPY05", "SVENPY10", "UNRATE", "CPILFESL", "GDPC1")], nc = 2, main = "")
+```
+
+## Pajamingumo kreivė
+Skirtingų trukmių vertybinų popierių pajamingumai yra stipriai koreliuoti (žr. \ref{fig:data} Pav) ir tipiškai didėja, didėjant trukmei iki išpirkimo. Skirtingų trukmių obligacijų gali būti daug, todėl dažnai modeliuojant naudojama pajamingumų kreivė, kuri nusako pajamingumo normą skirtingos trukmės vertybiniams popieriams. Tipinę kreivės formą galima pamatyti \ref{fig:yc_example} pav. Mes analizėje naudojame 1, 2, ..., 10 metų fiksuotus kreivės taškus.
+
+```{r yc_example, fig.width=8, fig.cap="\\label{fig:yc_example}JAV VP pajamingumo kreivė"}
+plot(t(tail(FRED.data[,3:12], 1)), type = "b", xlab = "Trukmė iki išpirkimo (metais)", ylab = "Pajamingumo norma")
+```
+
+Dažnai pajamingumo kreivė yra aprašoma trimis faktoriais: lygiu, statumu ir kreivumu. Pvz. @NelsonSiegel pasiūlė tokį kreivės faktorių išskyrimą:
+
+$$ y_t(m) = \beta^L_t + \beta^S_t \left(\frac{1-\exp(-m \lambda)}{m\lambda}\right) + \beta^C_t \left(\frac{1-\exp(-m \lambda)}{m\lambda} - \exp(-m \lambda)\right).$$
+Čia $m$ žymi trukmę iki obligacijos išpirkimo, $y_t$ - pajamingumo lygį, o $\lambda$ parametras, kuris nusako kurioje kreivės vietoje maksimizuojamas kreivumas. Tai maždaug atitinka PCA rezultatus (pirmos trys didžiausios variacijos komponentės). Tokia praktika motyvavo FAVAR modelio pasirinkimą.
+
+```{r, message=FALSE, include=FALSE}
+p = 1
+l = 12
+# model.VAR_TVP = bayesVAR_TVP(FRED.data, p = p, nburn = 1000, nsim = 10000)
+# model.VAR_TVP = bayesFAVAR_TVP(FRED.data, l = l, n.factors = 3, p = p, nburn = 50000, nsim = 20000, reject.explosive = TRUE)
+# saveRDS(model.VAR_TVP, file = "C:\\Users\\gedim\\Desktop\\_bayesVAR_dump\\FAVAR_p1_f6+RGDP_l12_50k+20k+rejT.RDS")
+model.VAR_TVP = readRDS("C:\\Users\\gedim\\Desktop\\_bayesVAR_dump\\FAVAR_p1_f6+RGDP_l12_50k+20k+rejT.RDS")
+```
+
+# Trumpai apie TVP-FAVAR modelį
+Analizei pasirinkome faktoriais papildytą vektorinės autoregresijos su laike kintančiais parametrais modelį (TVP-FAVAR). Tokį pasirinkimą lėmė keli veiksniai. Kaip minėjome visą pajamingumo kreivę gan gerai aprašo trys faktoriai. Kita vertus, kadangi nagrinėjome ilgą laikotarpį yra gan realu, kad per tą laikotarpį ekonominiai sąryšiai galėjo kisti, todėl pasirinkome modelį su laike kintančiais parametrais. Modelis užrašomas trimis lygtimis:
+
+$$ y_t = \Lambda F_t + r_t; \qquad r_t \sim N(0, R) $$
+$$ F_t = Z_t \beta_t + \epsilon_t; \qquad \epsilon_t \sim N(0, H) $$
+$$ \beta_{t+1} = \beta_t + u_t; \qquad u_t \sim N(0, Q),$$
+$Z_t$ žymi matricą
+$$ Z_t = [1, F_{t-1}, F_{t-2}, ..., F_{t-p}] \otimes I_n $$
+Mūsų nagrinėjamu atveju
+$$ y_t = (\text{SVENPY01}_t, ..., \text{SVENPY10}_t, \text{UNRATE}_t, \text{CPILFESL}_t, \text{GDPC1}_t), $$
+$$ F_t = (F^1_t, F^2_t, F^3_t, \text{UNRATE}_t, \text{CPILFESL}_t, \text{GDPC1}_t), $$
+ir 
+$$ \Lambda = \left( \begin{array}{cccccc}
+\lambda_{1;1} & \lambda_{1;2} & \lambda_{1;3} & 0 & 0 & 0 \\
+... & ... & ... & ... & ... & ... \\
+\lambda_{10;1} & \lambda_{10;2} & \lambda_{10;3} & 0 & 0 & 0 \\
+0  & 0 & 0 & 1 & 0 & 0 \\
+0  & 0 & 0 & 0 & 1 & 0 \\
+0  & 0 & 0 & 0 & 0 & 1 \\
+\end{array} \right). $$
+Taip pat darome prielaidą, kad $R$ diagonalinė matrica (visa tarpusavio priklausomybė atsiranda tik iš fakorių).
+
+## Apriori skirstiniai
+Parametrams $\Lambda$ ir $R$ pasirinkome Normalųjų-Atvirkštinį Gama (angl. *normal-inverse gamma*) priorą, kadangi laikant kitus parametrus žinomais pirma lygtis nusako tiesinės regresijos modelį. Šiuo atveju pasirinkome
+
+$$R_{ii} \sim IG(0.01, 1); \qquad \lambda_{ij} \sim N(0, 1).$$
+$F_t$ ir $\Lambda$ pradinės reikšmės gautos iš PCA, tačiau išmėginome ir kitas pradines reikšmes. 
+
+Modelio parametrams $\beta_0$, $H$ ir $Q$ pasirinkome patogų ir gan bendrą nepriklausomą Normalųjų-Wishart (angl. *independent Normal-Wishart*) apriorinį skirstinį, t.y.
+$$ p(\beta_1, H^{-1}, Q^{-1}) = p(\beta_1) p(H^{-1}) p(Q^{-1}), $$
+kur
+$$\beta_1 \sim N(\underline{\beta}, \underline{V}_{\beta}) ,$$
+$$H^{-1} \sim W(\underline{S}^{-1}, \underline{\nu}), $$
+$$Q^{-1} \sim W(\underline{Q}^{-1}, \underline{\nu}_Q). $$
+
+Apriorų hiperparametrų nustatymui sekėme @Primiceri2005 ir juos pasirenkome naudodami OLS sprendinį pirmiems 40 stebėjimų ($\tau = 40$), t.y. nuo 1967K2 iki 1977K1. Pats FAVAR-TVP modelio skaičiavimas pradedamas nuo 1977K2. Hiperparametrai nustatomi naudojant OLS sprendinį $\beta_{OLS}$ ir kovariacijų matricą $V(\beta_{OLS})$. Šiam tyrimui pasirinkome
+$$\underline{\beta} = \beta_{OLS}; \quad \underline{V}_{\beta} = 4V(\beta_{OLS}); \quad  \underline{\nu} = n +1; \quad \underline{S} = I_n; \quad \underline{\nu}_Q = \tau; \quad \underline{Q} = 10^{-6} \tau V(\beta_{OLS})$$
+Reiktų pastebėti, kad pasirinkome labai mažas kovariacijas matricoje $\underline{Q}$. Tai atspindi mūsų a priori požiūrį, kad parametrai $\beta_t$ turėtų būti mažai kintantys.
+
+Nepriklausomas normaliojo-Wishart bei normaliojo-atv. gama aprioras leidžia sukonstruoti paprastą MCMC algoritmą, kuris paeiliui generuoja
+$p(\beta_1 | F_T, \beta_T, H)$, $p(H^{-1}| F_T, \beta_1, \beta_T)$, $p(Q^{-1}|F_T, \beta_1, \beta_T )$, $p(\beta_T |F_T, \beta_1, H, Q)$, $p(\Lambda | y_T, F_T, R)$, $p(R| y_T, F_T, \Lambda)$ ir $p(F_T|y_T, R, \Lambda, H)$. Plačiau apie MCMC algoritmą galima rasti @KoopKorobilis2010, @blake2012applied, @Bernanke2004 ir @EllisMumtaz2014.
+
+Verta paminėti, kad yra keliatas algoritmų skirtų $p(\beta_T | F_T, \beta_1, H, Q)$ generavimui. Mes išmėginome du iš jų @CC1994 ir @DK2002. Abu algoritmai grąžina panašius rezultatus, tačiau mūsų @DK2002 implementacija veikia šiek tiek greičiau.
+
+Kita a priori prielaida modeliuojant ekonominius duomenis dažnai yra, kad nagrinėjamos laiko eilutės yra stacionarios. Mes taip pat darome šią prielaidą ir ją implementuojame, naudodami priėmimo-atmetimo (angl. *accept-reject*) žingsnį MCMC algoritme. Plačiau apie tai @CogleySargent2005.
+
+## VAR lagų skaičiaus pasirinkimas
+VAR modelio lagų skaičiui nustatyti naudojome OLS sprendinį kreivės faktoriams (atlikus PCA) ir ekonominiams duomenims, bei dažnai praktikoje naudojamus informacijos kriterijus: AIC, HQ, SC, FPE. Optimalūs lagų skaičiai pagal kiekvieną iš kriterijų pateikiami \ref{table:VAR_ic} lentelėje. HQ ir SC kriterijai siūlo atitinkamai du arba vieną lagą, o kiti du daug didesnius. Dėl naudojamo MCMC algoritmo skaičiavimų intensyvumo pasirinkome tolesnėje analizėje naudoti $p = 1$, t.y. TVP-FAVAR(1) modelį.
+
+```{r}
+x.PCA = prcomp(FRED.data)$x[,1:3]
+FRED.FA = cbind(x.PCA, FRED.data[,c("UNRATE", "CPILFESL", "GDPC1")])
+knitr::kable(t(VARselect(FRED.FA, lag.max = 10, type = "const")$selection), caption = "\\label{table:VAR_ic}Optimalus lagų skaičius pagal skirtingus informacijos kriterijus")
+```
+
+
+# MCMC algoritmo rezultatai
+## Konvergavimas
+Posterioro radimui atlikome 70000 MCMC algoritmo žingsnių, iš kurių atmetėme pirmus 20000. 
+Konvergavimas patikrintas algoritmą iniciajavus su skirtingomis pradinėmis reikšmėmis, ir sulyginus gautus rezultatus. Taip pat grafiškai patikrinti autokoreliacijos bei simuliacijos histogramų grafikai. Dėl didelio skaičiaus pateikiame šiuos grafikus tik keliems parametrams. \ref{fig:convergence} pav. pateikiame grafikus `UNRATE` faktorių lygties konstantai paskutiniam stebėtam periodui (2016K4) $\beta^{4;1}_{2016K4}$, o \ref{fig:convergence2} pav. - analogiškus grafikus parametrui $q_{11}$.
+
+```{r convergencePlot, fig.width=12, fig.cap="\\label{fig:convergence}Kairėje 10000 parametro simuliacijų, viduryje acf grafikas pirmam 1000 lagų, dešinėje posterioro simuliacijų histograma"}
+par(mfrow = c(1, 3))
+plot(model.VAR_TVP$beta[model.VAR_TVP$t, 4,1,], type = "l", main = "", ylab = "", xlab = "")
+acf(model.VAR_TVP$beta[model.VAR_TVP$t, 4,1,], lag.max = 1000, main = "", ylab = "", xlab = "")
+hist(model.VAR_TVP$beta[model.VAR_TVP$t, 4,1,], breaks = 100, main = "", ylab = "", xlab = "")
+```
+
+```{r convergencePlot2, fig.width=12, fig.cap="\\label{fig:convergence2}Kairėje 10000 parametro simuliacijų, viduryje acf grafikas pirmam 1000 lagų, dešinėje posterioro simuliacijų histograma"}
+par(mfrow = c(1, 3))
+plot(model.VAR_TVP$Q[1,1,], type = "l", main = "", ylab = "", xlab = "")
+acf(model.VAR_TVP$Q[1,1,], lag.max = 1000, main = "", ylab = "", xlab = "")
+hist(model.VAR_TVP$Q[1,1,], breaks = 100, main = "", ylab = "", xlab = "")
+```
+
+## Parametrų skirstiniai ir įverčiai
+\ref{fig:beta_t} pav. pavaizduota beta posteriorų vidurkių kitimas laike, o \ref{table:betaTable} lentelėje beta parametrų įverčiai paskutiniam stebėtm periodui. Taip pat \ref{table:H} lentelėje pateikėme H kovariacijų matricos parametrų posteriorų vidurkius. Dėl didelio kiekio parametrų kiekio, vien iš jų sunku suprasti nagrinėjamų duomenų eilučių sąryšius, todėl tokiais atvejais dažnai naudojama impulso-atsako (angl. *impulse-response*) funkcijos. 2016m. 4 ketv. jos pavaizduotos \ref{fig:impulse-response} pav. Matome kai kuriuos sąryšius, kurių ir buvo galima laukti. Pvz. infliacijos šokas paveikia pajamingumų kreivę - didėja lygio (PC1) ir kreivumo (PC3) faktoriai, o statumo (PC2) faktorius mažėja.
+
+```{r, include=FALSE}
+model.VAR_TVP.coef = coef(model.VAR_TVP, loss.function = "absolute")
+```
+
+```{r betaTable, echo=FALSE}
+knitr::kable(model.VAR_TVP.coef$beta.est[,,157-p], digits = 2, caption = "\\label{table:betaTable}Paskutinio periodo beta parametrų įverčiai")
+```
+
+```{r HTable, echo=FALSE}
+knitr::kable(model.VAR_TVP.coef$H.est, digits = 2, caption = "\\label{table:H}Kovariacijų matricos H įvertis")
+```
+
+
+## Prognozės ir scenarijų analizė
+Turint posterioro skirtinio simuliacijas gauti prognozių skirstinių simuliacijas nesudėtinga. Įvertinus parametrus procesas toliau tesiamas generuojant paklaidas pagal gautas kovariacijų matricas pasirinktą kiekį periodų. Mes pasirinkome 4 periodų (vienų metų) horizontą.
+
+Kaip minėjome užduoties aprašyme mus domina ne tik modelio implikuojma, bet ir sąlyginė prognozė prie tam tikrų ekonomikos scenarijų. Šias sąlygines prognozes randame "pataisydami" prognozės simuliacijas taip, kad jų momentai tenkintų nurodytus apribojimus ir būtų kiek įmanoma "arti" pradinio simuliuoto skirstinio pagal Kullback-Leibler informacijos kriterijų. Plačiau apie šį metodą galima rasti @Robertson2005.
+
+Savo analizėje suformavome tris ekonomikos scenarijus: optimistinį, bazinį ir pesimistinį. Scenarijai suformuoti nurodant infliacijos, nedarbo lygio ir RGDP vidurkius po metų. Scenarijai gali būti formuojami įvariai, pvz. savo nuojauta ar ekonomistų prognozėmis. Mūsų suformuoti scenarijai pateikiami \ref{table:economy_scenarios} lentelėje.
+Nagrinėtų eilučių prognozių skirstiniai pateikiami \ref{fig:PredDensity} pav. ir \ref{table:yc_forecast} lentelėje. \ref{fig:yc_forecast} pav. pateikiame ir pačių pajamingumo kreivių prognozes. Gauti rezultatai intuityvūs: gerėjant ekonominiai situacijai pajamingumų kreivė kyla į viršų, o blogėjant atvirkščiai - pajamingumai mažėja.
+
+```{r}
+data_currentLevels = read_excel("FRED_data.xlsx", sheet = "CurrentLevels")
+data_currentLevels = as.xts(data_currentLevels[,-1], order.by = as.Date(data_currentLevels$Date))[,regs]
+
+g.mean = function(T, y.index) function(A) {
+  A[as.character(T), y.index]
+}
+
+g.rhs = rbind(
+  Optimistinis = c(UNRATE = 4.4, CPILFESL = 3.2, GDPC1 = 2.5), 
+  Bazinis = c(UNRATE = 4.8, CPILFESL = 2.5, GDPC1 = 1.8), 
+  Pesimistinis = c(UNRATE = 5.4, CPILFESL = 1.8, GDPC1 = 1.25)
+)
+```
+```{r}
+knitr::kable(g.rhs, digits = 2, caption = "\\label{table:economy_scenarios}Ekonominių duomenų raidos scenarijai")
+```
+
+```{r, echo=FALSE, warning=FALSE}
+Pred.density = predictive.density(model.VAR_TVP, currentLevels = tail(data_currentLevels, p), n.sim = 20)
+# plot(Pred.density)
+```
+
+```{r, echo=FALSE}
+
+MinEntropy = apply(g.rhs, 1, function(r) {
+  MinimumEntropy_weights(Pred.density, g.mean(4, c("UNRATE", "CPILFESL", "GDPC1")), r)
+})
+MinEntropy$Modelis = list(pi.star = NULL)
+```
+
+```{r preddensity4, echo=FALSE, fig.cap="\\label{fig:PredDensity}Pajamingumų kreivės taškų sąlyginių prognozių po 1 metų KDE tankiai skirtingais scenarijais", fig.width=12, warning=FALSE}
+Scenario.Anlysis_LSC = lapply(MinEntropy, function(x) {
+  apply(Pred.density["4",1:l,], 1, wtd.quantile, weights = x$pi.star, probs = c(0.05, 0.5, 0.95), normwt = TRUE)
+})
+
+col = c(Optimistinis = "green", Pesimistinis = "red", Bazinis = "black", Modelis = "grey")
+par(mfrow = c(1,3))
+for(f in c(3, 7, 12)) {
+  xlim = mean(Pred.density["4",f,]) + c(-1,1) * 2 * sd(Pred.density["4",f,]) 
+  plot(1, xlim = xlim, ylim = c(0, 0.5), main = f-2)
+  for(s in names(MinEntropy)) {
+    lines(density(Pred.density["4", f, ], weights = MinEntropy[[s]]$pi.star), col = col[s])
+  }
+  legend("topleft", names(MinEntropy), lty = 1, col = col[names(MinEntropy)])
+}
+```
+
+```{r, warning=FALSE}
+Scenario.Anlysis_LSC_subset = lapply(Scenario.Anlysis_LSC, function(x) x[,c(3,5, 7, 9, 12)])
+
+knitr::kable(Scenario.Anlysis_LSC_subset, digits = 2, caption = "\\label{table:yc_forecast}Prognozės simuliacijų kvantiliai skirtingais scenarijais")
+
+```
+
+```{r, fig.width=8, fig.height=4, fig.cap="\\label{fig:yc_forecast} Pajamingumo kreivės prognozės (medianos) po 1 metų skirtingais ekonominiais scenarijais", warning=FALSE}
+
+Scenario.Anlysis_yields = sapply(MinEntropy, function(x) {
+  apply(Pred.density["4",1:l,], 1, wtd.quantile, weights = x$pi.star, probs = 0.5, normwt = TRUE)
+})
+
+Scenario.Anlysis_yields = data.frame(Scenario.Anlysis_yields, `Dabartinis lygis` = t(coredata(tail(data_currentLevels, 1)[,1:l])))
+
+autoplot(zoo(Scenario.Anlysis_yields[-1:-2,], order.by = 1:10), facet = NULL) + geom_point() + scale_color_manual(values = c("Green", "Black", "Red", "Grey", "Blue")) + theme_bw() + xlab("Laikas iki išpirkimo") + ylab("Pajamingumas") + labs(color = "Scenarijus")
+```
+
+
+
+```{r}
+# par(mfrow = c(1,3))
+# apply(Pred.density["4", c("NS_L", "NS_S", "NS_C"),], 1, function(X) {
+#   A = ggplot(data.frame(X = X), aes(x = X)) + stat_density(weight = MinEntropy[[i]]$pi.star)
+#   for(i in 1:length(MinEntropy)) {
+#     A = A + stat_density(aes(weight = MinEntropy[[i]]$pi.star))
+#   }
+# })
+
+
+# plot(density(Pred.density["4", "NS_L", ], weights = MinEntropy$Bazinis$pi.star), main = "", ylab = "", xlab = "")
+# lines(density(Pred.density["4", "NS_L", ], weights = MinEntropy$Optimistinis$pi.star), col = "green")
+# lines(density(Pred.density["4", "NS_L", ], weights = MinEntropy$Pesimistinis$pi.star), col = "red")
+# lines(density(Pred.density["4", "NS_L", ]), col = "grey")
+# legend("topright", c("Bazinis", "Optimistinis", "Pesimistinis", "Modelio implikuojamas"), lty = c(1,2,4,1), col = c("black", "black", "black", "red"))
+```
+
+\newpage
+# Priedas. Paveikslėliai
+```{r beta, echo=FALSE, fig.align='center', fig.cap="\\label{fig:beta_t}VAR-TVP(1) beta parametrų medianų kitimas laike", fig.height=14, fig.width=12, message=FALSE, warning=FALSE, fig.pos = '!htbp'}
+plot.beta(model.VAR_TVP)
+```
+
+```{r, fig.height=14, fig.width=12, fig.cap="\\label{fig:impulse-response}Impulso-atsako funkcijos 2016K3. Horizontas 20 periodų (5 metai).", fig.pos = "!htbp"}
+model.VAR_TVP.IRF = impulse.response(model.VAR_TVP, R = 20)
+```
+
+```{r}
+# m.F = apply(model.VAR_TVP$F, 1:2, mean)
+# # AA = diag(c(0.9, 0.06, 0.04))*100
+# #  LL = solve(chol(t(m.F) %*% m.F))
+# LL = model.VAR_TVP$prior$L.Rotation
+# LL = prcomp(m.F, center = FALSE, scale. = FALSE)$rotation # model.VAR_TVP$prior$L.Rotation
+# m.F_star = m.F %*% LL
+# matplot(m.F_star, type = "l")
+# 
+# m.L = apply(model.VAR_TVP$L, 1:2, mean)
+# # m.L_star = svd(m.F)$v %*% m.L
+# m.L_star = solve(LL) %*% m.L
+# m.L_star
+# matplot(t(m.L_star), type = "l")
+```
+
+# Nuorodos į R/C++ kodą
+Pagrindinė dalis kodo sudėta į `bayesVAR_TVP` paketą. Jį galima rasti: https://github.com/GediminasB/bayesVAR_TVP.
+Pačios ataiskaitos `Rmarkdown` kodas ir naudoti duomenys čia: https://github.com/GediminasB/MIF_bayesVAR_tyrimas
+
+# Literatūros sąrašas
